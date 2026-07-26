@@ -16,6 +16,7 @@ st.set_page_config(
 
 CSS = """
 <style>
+:root { color-scheme: light; }
 #MainMenu, footer, header {visibility: hidden;}
 .block-container {max-width: 560px; padding-top: 2rem; padding-bottom: 3rem;}
 
