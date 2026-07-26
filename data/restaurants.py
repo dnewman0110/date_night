@@ -18,6 +18,8 @@ RESTAURANTS = [
             "One block from the theater. Elegant farm-to-fork dining with a "
             "raw bar, wood-fired entrees, and an award-winning wine list."
         ),
+        "reservation_platform": "opentable",
+        "reservation_url": "https://www.opentable.com/ella-dining-room-and-bar-reservations-sacramento?restref=16474&lang=en-US",
         "menu": {
             "Small Plates": [
                 ("Steak Tartare", "Herb salad, fried capers, farm egg, garlic-parsley popovers", "$18"),
@@ -53,6 +55,8 @@ RESTAURANTS = [
             "A Sacramento institution and James Beard America's Classic "
             "award winner, a short walk from the theater near the Capitol."
         ),
+        "reservation_platform": "opentable",
+        "reservation_url": "https://www.opentable.com/frank-fats",
         "menu": {
             "Appetizers": [
                 ("Pork Pot Stickers", "Savory pork and fresh vegetables, pan-fried", "$15.95"),
@@ -87,6 +91,8 @@ RESTAURANTS = [
             "Housed in an 1853 firehouse in the Old Sacramento waterfront "
             "district — a romantic, historic setting with a courtyard patio."
         ),
+        "reservation_platform": "tock",
+        "reservation_url": "https://www.exploretock.com/the-firehouse-restaurant-sacramento",
         "menu": {
             "Starters": [
                 ("Oysters on the Half Shell", "Half-dozen seasonal oysters, lemon, pink peppercorn mignonette", "$34"),

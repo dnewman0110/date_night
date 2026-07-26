@@ -1,13 +1,17 @@
 # Date Night 🍷
 
 A small personal gift app: Allison picks the restaurant, browses the menu,
-picks a dinner time, and "books" it before your Aug 1, 2026 date night
+picks a dinner time, and reserves it before your Aug 1, 2026 date night
 (*The Odyssey*, 6:30 PM, Esquire IMAX Theatre). It emails her a confirmation
 and works out what time you need to leave the house.
 
-This isn't hooked up to a real restaurant reservation system — it's a
-personalized mock booking flow. Whatever she picks gets emailed to you too,
-so you can go make the actual reservation.
+Neither OpenTable nor Tock offer a public API for third-party apps to pull
+live availability or submit bookings, so this app doesn't book automatically.
+Instead, each restaurant's booking step deep-links to its real reservation
+page (OpenTable for Ella and Frank Fat's, Tock for the Firehouse) with the
+date, time, and party size pre-filled where the platform allows it. Allison
+completes the actual reservation there, then comes back and pastes in the
+confirmation number so the app can save it and email you both.
 
 ## Run it locally
 

@@ -52,7 +52,15 @@ def guest_confirmation_html(
     reservation_time_str: str,
     party_size: int,
     confirmation_code: str,
+    confirmed_externally: bool,
+    platform_name: str,
 ) -> str:
+    code_label = f"{platform_name} Confirmation #" if confirmed_externally else "Reference #"
+    booked_via_line = (
+        f"<p>Reserved via {platform_name}. Here's a copy of the details for your records:</p>"
+        if confirmed_externally
+        else "<p>Here are your reservation details:</p>"
+    )
     return f"""
     <div style="font-family: Georgia, 'Times New Roman', serif; max-width: 480px;
                 margin: 0 auto; border: 1px solid #e2ddd3; border-radius: 12px;
@@ -64,7 +72,7 @@ def guest_confirmation_html(
       </div>
       <div style="padding: 24px; color: #2f2a24;">
         <p>Hi {guest_name},</p>
-        <p>You're all set. Here are your reservation details:</p>
+        {booked_via_line}
         <table style="width: 100%; border-collapse: collapse; margin: 16px 0;">
           <tr><td style="padding: 6px 0; color: #7a7267;">Date &amp; Time</td>
               <td style="padding: 6px 0; text-align: right; font-weight: bold;">{reservation_time_str}</td></tr>
@@ -72,7 +80,7 @@ def guest_confirmation_html(
               <td style="padding: 6px 0; text-align: right; font-weight: bold;">{party_size}</td></tr>
           <tr><td style="padding: 6px 0; color: #7a7267;">Location</td>
               <td style="padding: 6px 0; text-align: right; font-weight: bold;">{restaurant_address}</td></tr>
-          <tr><td style="padding: 6px 0; color: #7a7267;">Confirmation #</td>
+          <tr><td style="padding: 6px 0; color: #7a7267;">{code_label}</td>
               <td style="padding: 6px 0; text-align: right; font-weight: bold;">{confirmation_code}</td></tr>
         </table>
         <p style="color: #7a7267; font-size: 14px;">We look forward to serving you. See you soon!</p>
@@ -89,7 +97,16 @@ def dave_notification_html(
     guest_email: str,
     confirmation_code: str,
     leave_by_str: str,
+    confirmed_externally: bool,
+    platform_name: str,
 ) -> str:
+    if confirmed_externally:
+        status_line = f"Reservation confirmed via {platform_name}."
+    else:
+        status_line = (
+            f"No confirmation number was entered — double-check this reservation "
+            f"actually went through on {platform_name} (or call the restaurant directly)."
+        )
     return f"""
     <div style="font-family: Arial, sans-serif; max-width: 480px; margin: 0 auto;">
       <h2>Allison booked date night!</h2>
@@ -99,8 +116,7 @@ def dave_notification_html(
       <p><b>Booked under:</b> {guest_name} ({guest_email})</p>
       <p><b>Confirmation code:</b> {confirmation_code}</p>
       <p><b>Suggested leave-home time:</b> {leave_by_str}</p>
-      <p style="color:#777;">Reminder: this is a mock reservation captured by the app —
-      go make the real booking with the restaurant.</p>
+      <p style="color:#777;">{status_line}</p>
     </div>
     """
 
@@ -115,12 +131,21 @@ def send_booking_emails(
     confirmation_code: str,
     notify_email: str,
     leave_by_str: str,
+    confirmed_externally: bool,
+    platform_name: str,
 ) -> dict:
     guest_ok, guest_err = _send(
         guest_email,
         f"Your reservation at {restaurant_name} is confirmed",
         guest_confirmation_html(
-            guest_name, restaurant_name, restaurant_address, reservation_time_str, party_size, confirmation_code
+            guest_name,
+            restaurant_name,
+            restaurant_address,
+            reservation_time_str,
+            party_size,
+            confirmation_code,
+            confirmed_externally,
+            platform_name,
         ),
     )
 
@@ -137,6 +162,8 @@ def send_booking_emails(
                 guest_email,
                 confirmation_code,
                 leave_by_str,
+                confirmed_externally,
+                platform_name,
             ),
         )
 

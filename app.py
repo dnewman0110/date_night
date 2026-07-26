@@ -4,7 +4,8 @@ import string
 import streamlit as st
 
 from data.restaurants import RESTAURANTS, get_restaurant
-from utils import scheduling
+from data.reviews import REVIEWS
+from utils import reservations, scheduling
 from utils.email_utils import send_booking_emails
 from utils.storage import save_booking
 
@@ -56,6 +57,25 @@ html, body, [class*="css"] { font-family: Georgia, 'Times New Roman', serif; }
     margin: 1rem 0;
 }
 
+.dn-review {
+    border: 1px solid #e5ded2;
+    border-radius: 14px;
+    padding: 1rem 1.2rem;
+    margin-bottom: 0.9rem;
+    background: #fffdf9;
+}
+.dn-review blockquote {
+    margin: 0 0 0.5rem 0;
+    font-style: italic;
+    color: #2f2a24;
+    font-size: 1.05rem;
+}
+.dn-review .attribution { color: #8a7c68; font-size: 0.9rem; }
+.dn-review-mock {
+    background: #f6efe3;
+    border: 1px solid #d8c7a8;
+}
+
 .stButton>button {
     width: 100%;
     border-radius: 10px;
@@ -103,6 +123,30 @@ def render_welcome() -> None:
     st.write("First things first — where should we eat beforehand?")
     if st.button("Let's plan our night →"):
         go_to("restaurant")
+    if st.button("📰 See what critics are saying about the movie"):
+        go_to("reviews")
+
+
+def render_reviews() -> None:
+    st.header(f"Reviews of {scheduling.MOVIE_TITLE}")
+    st.caption("One from Dave, the rest from actual film critics.")
+
+    for review in REVIEWS:
+        card_class = "dn-review dn-review-mock" if review.get("mock") else "dn-review"
+        emoji = "💌" if review.get("mock") else ("🍅" if review.get("critical") else "🎬")
+        st.markdown(
+            f"""
+            <div class="{card_class}">
+                <blockquote>{emoji} "{review['quote']}"</blockquote>
+                <div class="attribution">— {review['author']}, {review['source']}</div>
+            </div>
+            """,
+            unsafe_allow_html=True,
+        )
+
+    st.write("")
+    if st.button("← Back", key="back_to_welcome_from_reviews"):
+        go_to("welcome")
 
 
 def render_restaurant_menu(restaurant: dict) -> None:
@@ -178,6 +222,7 @@ def render_time_selection() -> None:
 def render_booking_form() -> None:
     restaurant = get_restaurant(st.session_state.selected_restaurant_id)
     time_label = scheduling.format_friendly(st.session_state.selected_time)
+    platform_name = reservations.platform_label(restaurant)
 
     st.header("Almost there")
     st.markdown(
@@ -191,18 +236,42 @@ def render_booking_form() -> None:
         unsafe_allow_html=True,
     )
 
+    party_size = st.number_input("Party size", min_value=1, max_value=8, value=2, step=1, key="party_size_input")
+    deep_link = reservations.build_deep_link(restaurant, st.session_state.selected_time, int(party_size))
+
+    st.markdown(f"**Step 1 — reserve the table on {platform_name}**")
+    st.write(
+        f"This app can't book on {platform_name} for you — there's no public API for that — "
+        f"but it can take you straight to {restaurant['name']}'s real reservation page with "
+        f"{time_label} and a party of {int(party_size)} pre-filled. Grab whatever time actually "
+        f"shows available there."
+    )
+    if deep_link:
+        st.link_button(f"Reserve on {platform_name} →", deep_link)
+    else:
+        st.info(f"Call {restaurant['name']} directly to reserve at {restaurant['address']}.")
+
+    st.markdown("**Step 2 — save it here**")
+    st.write("Once you've got a real reservation, fill this in so it's saved and you get an email.")
+
     with st.form("booking_form"):
         name = st.text_input("Name for the reservation", value="Allison")
-        party_size = st.number_input("Party size", min_value=1, max_value=8, value=2, step=1)
         email = st.text_input("Email for your confirmation")
-        submitted = st.form_submit_button("Book Reservation")
+        confirmation_code = st.text_input(
+            f"Confirmation number from {platform_name} (optional)",
+            help=f"Paste the confirmation number {platform_name} gave you, if any.",
+        )
+        submitted = st.form_submit_button("Save My Reservation")
 
     if submitted:
         if not name.strip() or "@" not in email:
             st.error("Please enter your name and a valid email address.")
             return
 
-        confirmation_code = "DN-" + "".join(random.choices(string.ascii_uppercase + string.digits, k=6))
+        confirmed_externally = bool(confirmation_code.strip())
+        code = confirmation_code.strip() or (
+            "DN-" + "".join(random.choices(string.ascii_uppercase + string.digits, k=6))
+        )
         reservation_dt = st.session_state.selected_time
         leave_by = scheduling.leave_home_by(reservation_dt)
 
@@ -213,7 +282,7 @@ def render_booking_form() -> None:
                 reservation_time=time_label,
                 guest_name=name.strip(),
                 guest_email=email.strip(),
-                confirmation_code=confirmation_code,
+                confirmation_code=code,
             )
         except Exception:
             pass  # local storage is a bonus; the notification email is the real backstop
@@ -226,9 +295,11 @@ def render_booking_form() -> None:
             restaurant_address=restaurant["address"],
             reservation_time_str=time_label,
             party_size=int(party_size),
-            confirmation_code=confirmation_code,
+            confirmation_code=code,
             notify_email=notify_email,
             leave_by_str=scheduling.format_friendly(leave_by),
+            confirmed_externally=confirmed_externally,
+            platform_name=platform_name,
         )
 
         st.session_state.booking = {
@@ -237,7 +308,8 @@ def render_booking_form() -> None:
             "email": email.strip(),
             "party_size": int(party_size),
             "reservation_dt": reservation_dt,
-            "confirmation_code": confirmation_code,
+            "confirmation_code": code,
+            "confirmed_externally": confirmed_externally,
             "leave_by": leave_by,
             "email_result": email_result,
         }
@@ -252,6 +324,8 @@ def render_confirmation() -> None:
     restaurant = b["restaurant"]
     time_label = scheduling.format_friendly(b["reservation_dt"])
     leave_by_label = scheduling.format_friendly(b["leave_by"])
+    platform_name = reservations.platform_label(restaurant)
+    code_label = f"{platform_name} Confirmation #" if b["confirmed_externally"] else "Reference #"
 
     st.markdown(
         f"""
@@ -266,7 +340,7 @@ def render_confirmation() -> None:
                     <td style="text-align:right; font-weight:bold;">{time_label}</td></tr>
                 <tr><td style="color:#8a7c68;">Party Size</td>
                     <td style="text-align:right; font-weight:bold;">{b['party_size']}</td></tr>
-                <tr><td style="color:#8a7c68;">Confirmation #</td>
+                <tr><td style="color:#8a7c68;">{code_label}</td>
                     <td style="text-align:right; font-weight:bold;">{b['confirmation_code']}</td></tr>
             </table>
         </div>
@@ -290,11 +364,19 @@ def render_confirmation() -> None:
     else:
         st.info("Your reservation is saved! (We couldn't send a confirmation email right now.)")
 
+    if not b["confirmed_externally"]:
+        st.warning(
+            f"No {platform_name} confirmation number was entered — make sure the reservation "
+            f"actually went through before you head out."
+        )
+
     st.caption("Can't wait for date night. ❤️")
 
 
 if st.session_state.step == "welcome":
     render_welcome()
+elif st.session_state.step == "reviews":
+    render_reviews()
 elif st.session_state.step == "restaurant":
     render_restaurant_selection()
 elif st.session_state.step == "time":
