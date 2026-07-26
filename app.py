@@ -129,7 +129,7 @@ def render_welcome() -> None:
 
 def render_reviews() -> None:
     st.header(f"Reviews of {scheduling.MOVIE_TITLE}")
-    st.caption("One from Dave, the rest from actual film critics.")
+    st.caption("All from amazing movie critics")
 
     for review in REVIEWS:
         card_class = "dn-review dn-review-mock" if review.get("mock") else "dn-review"
